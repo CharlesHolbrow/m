@@ -1,5 +1,10 @@
 package m
 
+import (
+	"fmt"
+	"strings"
+)
+
 // Group creates a new NoteGroup with the supplied notes
 func Group(notes ...NoteNumber) NoteGroup {
 	return notes
@@ -173,4 +178,22 @@ func Append(appendages ...NoteGroup) (result NoteGroup) {
 		result = append(result, group...)
 	}
 	return result
+}
+
+// FlatName gets the scientific pitch name for a note. It chooses the flat name
+// for a notes not in the C-major scale.
+func FlatName(n NoteNumber) string {
+	root := n % 12
+	name := pitchesFlats[root]
+	octave := (int(n) / 12) - 1
+	return fmt.Sprintf("%s%d", name, octave)
+}
+
+// FlatString make a string with all note names
+func (notes NoteGroup) FlatString() (result string) {
+	names := make([]string, len(notes))
+	for i, n := range notes {
+		names[i] = FlatName(n)
+	}
+	return "[" + strings.Join(names, " ") + "]"
 }

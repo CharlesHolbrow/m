@@ -181,7 +181,7 @@ func Append(appendages ...NoteGroup) (result NoteGroup) {
 }
 
 // FlatName gets the scientific pitch name for a note. It chooses the flat name
-// for a notes not in the C-major scale.
+// for notes not in the C-major scale.
 func FlatName(n NoteNumber) string {
 	root := n % 12
 	name := pitchesFlats[root]
@@ -196,4 +196,14 @@ func (notes NoteGroup) FlatString() (result string) {
 		names[i] = FlatName(n)
 	}
 	return "[" + strings.Join(names, " ") + "]"
+}
+
+// Repeat the NoteGroup `count` times.
+func (notes NoteGroup) Repeat(count int) (result NoteGroup) {
+	initialLength := len(notes)
+	result = make(NoteGroup, initialLength*count)
+	for i := range result {
+		result[i] = notes[i%initialLength]
+	}
+	return result
 }

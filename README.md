@@ -2,9 +2,9 @@
 
 MIDI Centric Music Theory Library
 
-Provides the NoteNumber and NoteGroup types.
+Provides the `NoteNumber` and `NoteGroup` types.
 
-To Create a c minor arpeggio from C2 to C6:
+To create a C minor arpeggio from C2 to C6:
 
 Midi note numbers correspond to [Scientific Pitch Notation](https://en.wikipedia.org/wiki/Scientific_pitch_notation).
 

@@ -180,6 +180,15 @@ func Append(appendages ...NoteGroup) (result NoteGroup) {
 	return result
 }
 
+// FirstOfEach returns a new NoteGroup with the first Note of each group
+func FirstOfEach(groups ...NoteGroup) (result NoteGroup) {
+	result = make(NoteGroup, len(groups))
+	for i, group := range groups {
+		result[i] = group[0]
+	}
+	return
+}
+
 // FlatName gets the scientific pitch name for a note. It chooses the flat name
 // for notes not in the C-major scale.
 func FlatName(n NoteNumber) string {

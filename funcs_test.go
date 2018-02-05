@@ -223,3 +223,22 @@ func TestNoteGroup_Repeat(t *testing.T) {
 		})
 	}
 }
+
+func TestNoteGroup_Reverse(t *testing.T) {
+	tests := []struct {
+		name       string
+		notes      NoteGroup
+		wantResult NoteGroup
+	}{
+		{
+			notes:      Group(1, 2, 3),
+			wantResult: Group(3, 2, 1)},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if gotResult := tt.notes.Reverse(); !reflect.DeepEqual(gotResult, tt.wantResult) {
+				t.Errorf("NoteGroup.Reverse() = %v, want %v", gotResult, tt.wantResult)
+			}
+		})
+	}
+}

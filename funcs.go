@@ -207,3 +207,20 @@ func (notes NoteGroup) Repeat(count int) (result NoteGroup) {
 	}
 	return result
 }
+
+// Transpose a NoteGroup up or down.
+func (notes NoteGroup) Transpose(amt int) (result NoteGroup) {
+	result = make(NoteGroup, len(notes))
+	for i, note := range notes {
+		result[i] = note + uint8(amt)
+	}
+	return
+}
+
+func (notes NoteGroup) Reverse() (result NoteGroup) {
+	result = make(NoteGroup, len(notes))
+	for i, note := range notes {
+		result[len(notes)-i-1] = note
+	}
+	return result
+}

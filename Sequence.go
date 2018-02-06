@@ -51,6 +51,21 @@ func NewSequence() *Sequence {
 	}
 }
 
+// AddSubdivisions creates `n` sustain events euqally spaced between the start
+// of the sequence and the cursor.
+func (s *Sequence) AddSubdivisions(n int, duty float64) *Sequence {
+	if s.Cursor == 0 {
+		panic("Sequence.AddSubdivisons requires non-aero cursor")
+	}
+
+	spacing := s.Cursor / float64(n)
+	length := spacing * duty
+	for i := 0; i < n; i++ {
+		s.AddSustain(float64(i)*spacing, length, 100)
+	}
+	return s
+}
+
 // Get an event by its index, looping from the beginning of the sequence to the
 // cursor. If the are events after the cursor of the sequence, the order of
 // events returned by Get may not follow the playback order. To get the playback
@@ -72,7 +87,7 @@ func (s *Sequence) Get(i int) SequenceEvent {
 
 // Add an event to the sequence. Position is a dimensionless point to place the
 // event. The dimension can be set with the sequence.Sorted() function.
-func (s *Sequence) Add(position float64, event Event) {
+func (s *Sequence) Add(position float64, event Event) *Sequence {
 	if position < 0 {
 		fmt.Printf("Bad event position: %f (%v)\n", position, event)
 		panic("Cannot add event to with negative position")
@@ -94,10 +109,12 @@ func (s *Sequence) Add(position float64, event Event) {
 
 	s.content[position] = append(events, timeEvent)
 	s.list = append(s.list, timeEvent)
+
+	return s
 }
 
 // AddSustain adds an event with a Non-zero length.
-func (s *Sequence) AddSustain(position, length float64, velocity int) {
+func (s *Sequence) AddSustain(position, length float64, velocity int) *Sequence {
 	// For now, I'm using gm.Note events for sustained events. It might be
 	// advantagous to use something more speciffic so that this doesn't get
 	// confused for a midi sequence. If I decide to change the event type
@@ -105,6 +122,7 @@ func (s *Sequence) AddSustain(position, length float64, velocity int) {
 	s.Add(position, gm.Note{Vel: uint8(velocity), On: true})
 	s.content[position][len(s.content[position])-1].length = length
 	s.list[len(s.list)-1].length = length
+	return s
 }
 
 // AddRhythmicMelody add a melody with a given rhythm.
@@ -114,7 +132,7 @@ func (s *Sequence) AddSustain(position, length float64, velocity int) {
 // - Set the loop point by setting `r.Cursor`
 // - Create a NoteGroup with the desired Melody
 // - On the receiver sequence, `s`, call `s.AddRythmicMelody(...)`
-func (s *Sequence) AddRhythmicMelody(rhythm *Sequence, notes NoteGroup, midiCh int) {
+func (s *Sequence) AddRhythmicMelody(rhythm *Sequence, notes NoteGroup, midiCh int) *Sequence {
 	ch := uint8(midiCh)
 	for i, root := range notes {
 		seqEvent := rhythm.Get(i)
@@ -126,6 +144,7 @@ func (s *Sequence) AddRhythmicMelody(rhythm *Sequence, notes NoteGroup, midiCh i
 			s.Add(offPos, gm.Note{Note: root, Ch: ch})
 		}
 	}
+	return s
 }
 
 // EventList creates a slice of TimeEvents. The .Time property of each event will

@@ -14,7 +14,7 @@ type Event interface{}
 // SequenceEvent wraps an event, and adds metadata about the location.
 type SequenceEvent struct {
 	subPosition int
-	position    float64       // Dimensionless floating point value
+	position    float64       // Dimensionless floating point value relative to start
 	length      float64       // Sustained events have a non-zero length
 	Time        time.Duration // Duration from seq start to event time
 	Event       Event
@@ -29,7 +29,7 @@ func (se SequenceEvent) Length() float64 { return se.length }
 // Sequence is an ordered collection of Events.
 type Sequence struct {
 	// content is important, because it stores the order that events were added
-	content map[float64][]SequenceEvent
+	content map[float64]int
 
 	// list is where the actual sorting happens
 	list []SequenceEvent
@@ -47,7 +47,7 @@ type Sequence struct {
 func NewSequence() *Sequence {
 	return &Sequence{
 		list:    make([]SequenceEvent, 0),
-		content: make(map[float64][]SequenceEvent),
+		content: make(map[float64]int),
 	}
 }
 
@@ -61,19 +61,13 @@ func (s *Sequence) Add(position float64, event Event) *Sequence {
 
 	s.sorted = false
 
-	events, ok := s.content[position]
-	if !ok {
-		events = make([]SequenceEvent, 0, 10)
-		s.content[position] = events
-	}
-
 	timeEvent := SequenceEvent{
 		Event:       event,
 		position:    position + s.Cursor,
-		subPosition: len(events),
+		subPosition: s.content[position],
 	}
 
-	s.content[position] = append(events, timeEvent)
+	s.content[position]++
 	s.list = append(s.list, timeEvent)
 
 	return s
@@ -94,6 +88,19 @@ func (s *Sequence) AddSubdivisions(n int, totalLength, duty float64) *Sequence {
 	return s
 }
 
+// RampSustainVelocity replaces velocity value in sustained events. The new
+// velocity values ramp from startVel at pos=0 to endVal at pos=s.Cursor
+func (s *Sequence) RampSustainVelocity(startVel, endVel int) {
+	slope := float64(endVel-startVel) / s.Cursor
+	for i, sEvent := range s.list {
+		if e, ok := sEvent.Event.(gm.Note); ok {
+			position := sEvent.position
+			e.Vel = uint8(slope*position + float64(startVel))
+			s.list[i].Event = e
+		}
+	}
+}
+
 // AddSustain adds an event with a Non-zero length.
 func (s *Sequence) AddSustain(position, length float64, velocity int) *Sequence {
 	// For now, I'm using gm.Note events for sustained events. It might be
@@ -101,7 +108,6 @@ func (s *Sequence) AddSustain(position, length float64, velocity int) *Sequence 
 	// confused for a midi sequence. If I decide to change the event type
 	// make sure to also update the `AddRhythmicMelody` implementation.
 	s.Add(position, gm.Note{Vel: uint8(velocity), On: true})
-	s.content[position][len(s.content[position])-1].length = length
 	s.list[len(s.list)-1].length = length
 	return s
 }

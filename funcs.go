@@ -226,6 +226,7 @@ func (notes NoteGroup) Transpose(amt int) (result NoteGroup) {
 	return
 }
 
+// Reverse the note group
 func (notes NoteGroup) Reverse() (result NoteGroup) {
 	result = make(NoteGroup, len(notes))
 	for i, note := range notes {

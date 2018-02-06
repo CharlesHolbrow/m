@@ -69,7 +69,7 @@ func (s *Sequence) Add(position float64, event Event) *Sequence {
 
 	timeEvent := SequenceEvent{
 		Event:       event,
-		position:    position,
+		position:    position + s.Cursor,
 		subPosition: len(events),
 	}
 
@@ -79,14 +79,14 @@ func (s *Sequence) Add(position float64, event Event) *Sequence {
 	return s
 }
 
-// AddSubdivisions creates `n` sustain events euqally spaced between the start
-// of the sequence and the cursor.
-func (s *Sequence) AddSubdivisions(n int, duty float64) *Sequence {
-	if s.Cursor == 0 {
-		panic("Sequence.AddSubdivisons requires non-aero cursor")
+// AddSubdivisions creates `n` sustain events euqally spaced over `totalLength`
+// between the start of the sequence and the cursor.
+func (s *Sequence) AddSubdivisions(n int, totalLength, duty float64) *Sequence {
+	if totalLength == 0 {
+		panic("Sequence.AddSubdivisons requires non-aero `totalLength`")
 	}
 
-	spacing := s.Cursor / float64(n)
+	spacing := totalLength / float64(n)
 	length := spacing * duty
 	for i := 0; i < n; i++ {
 		s.AddSustain(float64(i)*spacing, length, 100)

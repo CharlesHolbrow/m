@@ -12,16 +12,37 @@ func Group(notes ...NoteNumber) NoteGroup {
 
 // MinorTriad creates a minor triad based on root
 func MinorTriad(root NoteNumber) NoteGroup {
-	third := root + 3
-	fifth := root + 7
-	return Group(root, third, fifth)
+	return Group(root, root+3, root+7)
 }
 
 // MajorTriad creates a minor triad based on root.
 func MajorTriad(root NoteNumber) NoteGroup {
-	third := root + 4
-	fifth := root + 7
-	return Group(root, third, fifth)
+	return Group(root, root+4, root+7)
+}
+
+// MajorChord returns a major chord based on root including the upper octave
+func MajorChord(root NoteNumber) NoteGroup {
+	return MajorTriad(root).Append(Group(root + 12))
+}
+
+// MinorChord returns a minor chord based on root including the upper octave
+func MinorChord(root NoteNumber) NoteGroup {
+	return MinorTriad(root).Append(Group(root + 12))
+}
+
+// Sus4Triad creates a sus4 triad based on root
+func Sus4Triad(root NoteNumber) NoteGroup {
+	return Group(root, root+5, root+7)
+}
+
+// MajorSeventh chord based on root. Four notes long
+func MajorSeventh(root NoteNumber) NoteGroup {
+	return Group(root, root+4, root+7, root+11)
+}
+
+// MinorSeventh chord based on root. Four notes long
+func MinorSeventh(root NoteNumber) NoteGroup {
+	return Group(root, root+3, root+7, root+10)
 }
 
 // Dedupe iterates over a NoteGroup, and removes any notes that are not occuring

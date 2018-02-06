@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sort"
 	"time"
+
+	"github.com/CharlesHolbrow/gm"
 )
 
 // An Event is just a interface{} type. You can add any time to a sequence
@@ -32,35 +34,39 @@ type Sequence struct {
 	// list is where the actual sorting happens
 	list []SequenceEvent
 
-	// How long is the sequence. Note: there may be events after the end of the
-	// sequence (However, this should probably be avoided, as dangling note off
-	// events could prematurely silence a subsequent note)
-	length float64
+	// Sequences have a cursor, which saves a point within the sequence.
+	// Sequence methods may use the point to inform behavior. For example, the
+	// .Get method uses the curor as a loop point.
+	Cursor float64
 
 	// Is sequence.list known to be in playback order?
 	sorted bool
 }
 
 // NewSequence creates and initializes a new Sequence
-func NewSequence(length float64) *Sequence {
+func NewSequence() *Sequence {
 	return &Sequence{
 		list:    make([]SequenceEvent, 0),
 		content: make(map[float64][]SequenceEvent),
-		length:  length,
 	}
 }
 
-// Get an event with Looping. If the are events after the end of the sequence,
-// The order of events returned by Get may not follow the playback order. To get
-// the playback order, use EventList method.
+// Get an event by its index, looping from the beginning of the sequence to the
+// cursor. If the are events after the cursor of the sequence, the order of
+// events returned by Get may not follow the playback order. To get the playback
+// order, use EventList method.
 func (s *Sequence) Get(i int) SequenceEvent {
 	if !s.sorted {
 		s.sort()
 	}
 
+	if s.Cursor == 0 {
+		fmt.Println("Sequence.Get - WARNING - zero cursor")
+	}
+
 	repetition := i / len(s.list)
 	event := s.list[i%len(s.list)]
-	event.position = event.position + float64(repetition)*s.length
+	event.position = event.position + float64(repetition)*s.Cursor
 	return event
 }
 
@@ -90,10 +96,36 @@ func (s *Sequence) Add(position float64, event Event) {
 	s.list = append(s.list, timeEvent)
 }
 
-func (s *Sequence) AddSustain(position, length float64, event Event) {
-	s.Add(position, event)
+// AddSustain adds an event with a Non-zero length.
+func (s *Sequence) AddSustain(position, length float64, velocity int) {
+	// For now, I'm using gm.Note events for sustained events. It might be
+	// advantagous to use something more speciffic so that this doesn't get
+	// confused for a midi sequence. If I decide to change the event type
+	// make sure to also update the `AddRhythmicMelody` implementation.
+	s.Add(position, gm.Note{Vel: uint8(velocity), On: true})
 	s.content[position][len(s.content[position])-1].length = length
 	s.list[len(s.list)-1].length = length
+}
+
+// AddRhythmicMelody add a melody with a given rhythm.
+// To use:
+// - Create a rhythmic sequence `r`
+// - Call `r.AddSustain(...)` one or more times
+// - Set the loop point by setting `r.Cursor`
+// - Create a NoteGroup with the desired Melody
+// - On the receiver sequence, `s`, call `s.AddRythmicMelody(...)`
+func (s *Sequence) AddRhythmicMelody(rhythm *Sequence, notes NoteGroup, midiCh int) {
+	ch := uint8(midiCh)
+	for i, root := range notes {
+		seqEvent := rhythm.Get(i)
+		length := seqEvent.Length()
+		if note, ok := seqEvent.Event.(gm.Note); ok && length > 0 {
+			onPos := seqEvent.Position()
+			offPos := onPos + length
+			s.Add(onPos, gm.Note{On: true, Note: root, Ch: ch, Vel: note.Vel})
+			s.Add(offPos, gm.Note{Note: root, Ch: ch})
+		}
+	}
 }
 
 // EventList creates a slice of TimeEvents. The .Time property of each event will
@@ -113,6 +145,7 @@ func (s *Sequence) EventList(unit time.Duration) []SequenceEvent {
 // channel. returns the playback channel.
 func (s *Sequence) Play(unit time.Duration) chan interface{} {
 	start := time.Now()
+	s.sort()
 	out := make(chan interface{})
 	go func() {
 		for _, tEvent := range s.EventList(unit) {

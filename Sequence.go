@@ -51,40 +51,6 @@ func NewSequence() *Sequence {
 	}
 }
 
-// AddSubdivisions creates `n` sustain events euqally spaced between the start
-// of the sequence and the cursor.
-func (s *Sequence) AddSubdivisions(n int, duty float64) *Sequence {
-	if s.Cursor == 0 {
-		panic("Sequence.AddSubdivisons requires non-aero cursor")
-	}
-
-	spacing := s.Cursor / float64(n)
-	length := spacing * duty
-	for i := 0; i < n; i++ {
-		s.AddSustain(float64(i)*spacing, length, 100)
-	}
-	return s
-}
-
-// Get an event by its index, looping from the beginning of the sequence to the
-// cursor. If the are events after the cursor of the sequence, the order of
-// events returned by Get may not follow the playback order. To get the playback
-// order, use EventList method.
-func (s *Sequence) Get(i int) SequenceEvent {
-	if !s.sorted {
-		s.sort()
-	}
-
-	if s.Cursor == 0 {
-		fmt.Println("Sequence.Get - WARNING - zero cursor")
-	}
-
-	repetition := i / len(s.list)
-	event := s.list[i%len(s.list)]
-	event.position = event.position + float64(repetition)*s.Cursor
-	return event
-}
-
 // Add an event to the sequence. Position is a dimensionless point to place the
 // event. The dimension can be set with the sequence.Sorted() function.
 func (s *Sequence) Add(position float64, event Event) *Sequence {
@@ -110,6 +76,21 @@ func (s *Sequence) Add(position float64, event Event) *Sequence {
 	s.content[position] = append(events, timeEvent)
 	s.list = append(s.list, timeEvent)
 
+	return s
+}
+
+// AddSubdivisions creates `n` sustain events euqally spaced between the start
+// of the sequence and the cursor.
+func (s *Sequence) AddSubdivisions(n int, duty float64) *Sequence {
+	if s.Cursor == 0 {
+		panic("Sequence.AddSubdivisons requires non-aero cursor")
+	}
+
+	spacing := s.Cursor / float64(n)
+	length := spacing * duty
+	for i := 0; i < n; i++ {
+		s.AddSustain(float64(i)*spacing, length, 100)
+	}
 	return s
 }
 
@@ -158,6 +139,25 @@ func (s *Sequence) EventList(unit time.Duration) []SequenceEvent {
 		result[i] = tEvent
 	}
 	return result
+}
+
+// Get an event by its index, looping from the beginning of the sequence to the
+// cursor. If the are events after the cursor of the sequence, the order of
+// events returned by Get may not follow the playback order. To get the playback
+// order, use EventList method.
+func (s *Sequence) Get(i int) SequenceEvent {
+	if !s.sorted {
+		s.sort()
+	}
+
+	if s.Cursor == 0 {
+		fmt.Println("Sequence.Get - WARNING - zero cursor")
+	}
+
+	repetition := i / len(s.list)
+	event := s.list[i%len(s.list)]
+	event.position = event.position + float64(repetition)*s.Cursor
+	return event
 }
 
 // Play back the sequence on the supplied channel. If out is nil, create a

@@ -2,6 +2,7 @@ package m
 
 import (
 	"fmt"
+	"math/rand"
 	"strings"
 )
 
@@ -61,12 +62,13 @@ func (notes NoteGroup) Dedupe() (result NoteGroup) {
 }
 
 // AllOctaves creates a new NoteGroup, with all the original notes repeated in
-// every octave.
+// every octave. Output will not include any duplicates.
 func (notes NoteGroup) AllOctaves() NoteGroup {
 	result := make(NoteGroup, 0, 128)
+	dedupe := notes.Dedupe()
 	var i NoteNumber
 	for i = lowestNote; i <= highestNote; i++ {
-		for _, n := range notes.Dedupe() {
+		for _, n := range dedupe {
 			if i%12 == n%12 {
 				result = append(result, i)
 				break
@@ -74,6 +76,16 @@ func (notes NoteGroup) AllOctaves() NoteGroup {
 		}
 	}
 	return result
+}
+
+// Permute returns a new list in random permutation order
+func (notes NoteGroup) Permute() (result NoteGroup) {
+	result = make(NoteGroup, len(notes))
+	list := rand.Perm(len(notes))
+	for i, v := range list {
+		result[i] = notes[v]
+	}
+	return
 }
 
 // Append NoteGroups into one larger group

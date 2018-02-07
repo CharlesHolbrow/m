@@ -88,19 +88,6 @@ func (s *Sequence) AddSubdivisions(n int, totalLength, duty float64) *Sequence {
 	return s
 }
 
-// RampSustainVelocity replaces velocity value in sustained events. The new
-// velocity values ramp from startVel at pos=0 to endVal at pos=s.Cursor
-func (s *Sequence) RampSustainVelocity(startVel, endVel int) {
-	slope := float64(endVel-startVel) / s.Cursor
-	for i, sEvent := range s.list {
-		if e, ok := sEvent.Event.(gm.Note); ok {
-			position := sEvent.position
-			e.Vel = uint8(slope*position + float64(startVel))
-			s.list[i].Event = e
-		}
-	}
-}
-
 // AddSustain adds an event with a Non-zero length.
 func (s *Sequence) AddSustain(position, length float64, velocity int) *Sequence {
 	// For now, I'm using gm.Note events for sustained events. It might be
@@ -134,17 +121,25 @@ func (s *Sequence) AddRhythmicMelody(rhythm *Sequence, notes NoteGroup, midiCh i
 	return s
 }
 
-// EventList creates a slice of TimeEvents. The .Time property of each event will
-// be populated. To Add an event, you had to specify a dimensionless time
-// position. Set that dimension now with the `unit` argument.
-func (s *Sequence) EventList(unit time.Duration) []SequenceEvent {
-	s.sort()
-	result := make([]SequenceEvent, len(s.list))
-	for i, tEvent := range s.list {
-		tEvent.Time = time.Duration(tEvent.position * float64(unit))
-		result[i] = tEvent
+// CopyFrom copies all events from another sequence. It objeys the target
+// sequence cursor.
+func (s *Sequence) CopyFrom(source *Sequence) *Sequence {
+	for _, sEvent := range source.list {
+		s.Add(sEvent.position, sEvent.Event)
+		// I'm updating the event length below. However, this feels brittle.
+		// The problem is that AddSustain currently takes `velocity int`, and
+		// uses that to built a noteEvent. So if I were to use AddSustain for
+		// any event with non-zero length, I might accidentally overwrite a
+		// an event that had non-zero length, but did not have the default note
+		// properties. I should probably figure out a more generic way to
+		// sustain events. Perhaps the `AddSustain` method should take an event
+		// same as the `Add` method. The problem with this approach is that I
+		// want it to be very easy to add rhythms with velocity, and I want to
+		// guarantee that these can translate to midi note-on/off events via the
+		// AddRhythmicMelody method.
+		s.list[len(s.list)-1].length = sEvent.length
 	}
-	return result
+	return s
 }
 
 // Get an event by its index, looping from the beginning of the sequence to the
@@ -164,6 +159,38 @@ func (s *Sequence) Get(i int) SequenceEvent {
 	event := s.list[i%len(s.list)]
 	event.position = event.position + float64(repetition)*s.Cursor
 	return event
+}
+
+// RampSustainVelocity replaces velocity value in sustained events. The new
+// velocity values ramp from startVel at pos=0 to endVal at pos=s.Cursor
+func (s *Sequence) RampSustainVelocity(startVel, endVel int) {
+	slope := float64(endVel-startVel) / s.Cursor
+	for i, sEvent := range s.list {
+		if e, ok := sEvent.Event.(gm.Note); ok {
+			position := sEvent.position
+			e.Vel = uint8(slope*position + float64(startVel))
+			s.list[i].Event = e
+		}
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Playback and other non-composition related function are below
+//
+////////////////////////////////////////////////////////////////////////////////
+
+// EventList creates a slice of TimeEvents. The .Time property of each event will
+// be populated. To Add an event, you had to specify a dimensionless time
+// position. Set that dimension now with the `unit` argument.
+func (s *Sequence) EventList(unit time.Duration) []SequenceEvent {
+	s.sort()
+	result := make([]SequenceEvent, len(s.list))
+	for i, tEvent := range s.list {
+		tEvent.Time = time.Duration(tEvent.position * float64(unit))
+		result[i] = tEvent
+	}
+	return result
 }
 
 // Play back the sequence on the supplied channel. If out is nil, create a

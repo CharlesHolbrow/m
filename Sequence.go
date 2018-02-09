@@ -2,6 +2,7 @@ package m
 
 import (
 	"fmt"
+	"math/rand"
 	"sort"
 	"time"
 
@@ -74,7 +75,7 @@ func (s *Sequence) Add(position float64, event Event) *Sequence {
 }
 
 // AddSubdivisions creates `n` sustain events euqally spaced over `totalLength`
-// between the start of the sequence and the cursor.
+// starting at the cursor.
 func (s *Sequence) AddSubdivisions(n int, totalLength, duty float64) *Sequence {
 	if totalLength == 0 {
 		panic("Sequence.AddSubdivisons requires non-aero `totalLength`")
@@ -121,23 +122,48 @@ func (s *Sequence) AddRhythmicMelody(rhythm *Sequence, notes NoteGroup, midiCh i
 	return s
 }
 
+func (s *Sequence) AddRhythmicChords(rhythm *Sequence, chords []NoteGroup, midiCh int) *Sequence {
+	ch := uint8(midiCh)
+	for i, chord := range chords {
+		seqEvent := rhythm.Get(i)
+		length := seqEvent.Length()
+		if mNote, ok := seqEvent.Event.(gm.Note); ok && length > 0 {
+			onPos := seqEvent.Position()
+			offPos := onPos + length
+			for _, note := range chord {
+				s.Add(onPos, gm.Note{On: true, Note: note, Ch: ch, Vel: mNote.Vel})
+				s.Add(offPos, gm.Note{Note: note, Ch: ch})
+			}
+		}
+	}
+	return s
+}
+
+// AdvanceCursor increments the cursor by `amount`.
+func (s *Sequence) AdvanceCursor(amount float64) *Sequence {
+	s.Cursor += amount
+	return s
+}
+
 // CopyFrom copies all events from another sequence. It objeys the target
 // sequence cursor.
-func (s *Sequence) CopyFrom(source *Sequence) *Sequence {
-	for _, sEvent := range source.list {
-		s.Add(sEvent.position, sEvent.Event)
-		// I'm updating the event length below. However, this feels brittle.
-		// The problem is that AddSustain currently takes `velocity int`, and
-		// uses that to built a noteEvent. So if I were to use AddSustain for
-		// any event with non-zero length, I might accidentally overwrite a
-		// an event that had non-zero length, but did not have the default note
-		// properties. I should probably figure out a more generic way to
-		// sustain events. Perhaps the `AddSustain` method should take an event
-		// same as the `Add` method. The problem with this approach is that I
-		// want it to be very easy to add rhythms with velocity, and I want to
-		// guarantee that these can translate to midi note-on/off events via the
-		// AddRhythmicMelody method.
-		s.list[len(s.list)-1].length = sEvent.length
+func (s *Sequence) CopyFrom(sources ...*Sequence) *Sequence {
+	for _, source := range sources {
+		for _, sEvent := range source.list {
+			s.Add(sEvent.position, sEvent.Event)
+			// I'm updating the event length below. However, this feels brittle.
+			// The problem is that AddSustain currently takes `velocity int`, and
+			// uses that to built a noteEvent. So if I were to use AddSustain for
+			// any event with non-zero length, I might accidentally overwrite a
+			// an event that had non-zero length, but did not have the default note
+			// properties. I should probably figure out a more generic way to
+			// sustain events. Perhaps the `AddSustain` method should take an event
+			// same as the `Add` method. The problem with this approach is that I
+			// want it to be very easy to add rhythms with velocity, and I want to
+			// guarantee that these can translate to midi note-on/off events via the
+			// AddRhythmicMelody method.
+			s.list[len(s.list)-1].length = sEvent.length
+		}
 	}
 	return s
 }
@@ -172,6 +198,23 @@ func (s *Sequence) RampSustainVelocity(startVel, endVel int) {
 			s.list[i].Event = e
 		}
 	}
+}
+
+// RandomRemove steps through each event, and randomly removes some of them. If
+// `keepChance` is 0 all events will be removed. If it is one, all will be
+// preserved. if it is 0.5 each event has a 50% chance of being removed.
+//
+// Be careful not to call this on a midi sequence, as it will indiscriminantly
+// delete note-on/note-off events. Instead call it on a 'pattern' sequence.
+func (s *Sequence) RandomRemove(keepChance float64) *Sequence {
+	list := make([]SequenceEvent, 0, len(s.list)*2)
+	for _, sEvent := range s.list {
+		if rand.Float64() < keepChance {
+			list = append(list, sEvent)
+		}
+	}
+	s.list = list
+	return s
 }
 
 ////////////////////////////////////////////////////////////////////////////////

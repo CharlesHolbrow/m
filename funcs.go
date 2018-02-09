@@ -46,6 +46,11 @@ func MinorSeventh(root NoteNumber) NoteGroup {
 	return Group(root, root+3, root+7, root+10)
 }
 
+// MajorSeventh chord based on root. Four notes long
+func DominantSeventh(root NoteNumber) NoteGroup {
+	return Group(root, root+4, root+7, root+10)
+}
+
 // Dedupe iterates over a NoteGroup, and removes any notes that are not occuring
 // for the first time.
 func (notes NoteGroup) Dedupe() (result NoteGroup) {

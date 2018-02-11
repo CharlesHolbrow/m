@@ -36,6 +36,11 @@ func Sus4Triad(root NoteNumber) NoteGroup {
 	return Group(root, root+5, root+7)
 }
 
+// Sus4Chord creates a sus4 chord based on root including the upper octave
+func Sus4Chord(root NoteNumber) NoteGroup {
+	return Group(root, root+5, root+7, root+12)
+}
+
 // MajorSeventh chord based on root. Four notes long
 func MajorSeventh(root NoteNumber) NoteGroup {
 	return Group(root, root+4, root+7, root+11)
